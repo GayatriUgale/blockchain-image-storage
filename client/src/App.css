@@ -1,0 +1,29 @@
+body {
+ background-color: #1e1e1e;
+}
+.main_heading{
+
+  background-color: #2a2a2a;
+  border-radius: 4rem;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  height: 10rem;
+  border: 2px dotted white; 
+  box-sizing: border-box;
+
+}
+.text_account{
+
+  background-color: #2a2a2a;
+  height: 4rem;
+  width: 100%;
+  border-radius: 4px;
+  justify-content: center;
+  display: flex;
+  border: 1px solid white; 
+  box-sizing: border-box;
+  
+}
+
+
