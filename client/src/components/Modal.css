@@ -1,0 +1,126 @@
+/* Container */
+.Share_container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background-color: #111111;
+  border: 1px solid #ffffff30;
+  border-radius: 20px;
+  padding: 35px 30px;
+  max-width: 650px;
+  margin: 40px auto;
+}
+
+/* Title */
+.Share_container h2 {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* Both Inputs */
+.Share_container input {
+  width: 100%;
+  padding: 16px 20px;
+  background-color: #1a1a1a;
+  border: 1px solid #ffffff30;
+  border-radius: 50px; /* pill shape like your app */
+  color: #ffffff;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.Share_container input:focus {
+  border-color: #ffffff80;
+}
+
+.Share_container input:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.Share_container input::placeholder {
+  color: #ffffff50;
+  font-size: 14px;
+}
+
+/* Dropdown */
+.Share_container select {
+  width: 100%;
+  padding: 16px 20px;
+  background-color: #1a1a1a;
+  border: 1px solid #ffffff30;
+  border-radius: 50px; /* pill shape */
+  color: #ffffff80;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+}
+
+.Share_container select:hover {
+  border-color: #ffffff60;
+}
+
+.Share_container select option {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-radius: 0;
+}
+
+/* Share Button — matches your "Get Images" blue button */
+.Share_container button:first-of-type {
+  width: 100%;
+  padding: 16px;
+  background-color: #1a1a1a;
+  border: 1px solid #ffffff30;
+  border-radius: 50px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.Share_container button:first-of-type:hover {
+  background-color: #2a2a2a;
+}
+
+/* Revoke Button — blue like "Get Images" */
+.Share_container button:last-of-type {
+  width: 100%;
+  padding: 16px;
+  background-color: #1a56db;
+  border: none;
+  border-radius: 50px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.Share_container button:last-of-type:hover {
+  background-color: #1648c0;
+}
+
+/* Status message */
+.Share_message {
+  color: #4ade80;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.Share_message.error {
+  color: #f87171;
+}
