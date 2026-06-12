@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
 module.exports = {
   solidity: "0.8.0",
@@ -11,6 +12,10 @@ module.exports = {
       accounts: {
         mnemonic: "skin sample bulb nest achieve unfold escape firm quantum connect just jungle"
       }
+    },
+    sepolia: {
+      url: process.env.ALCHEMY_RPC_URL,
+      accounts: [process.env.PRIVATE_KEY]
     }
   },
   paths: {
