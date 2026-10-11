@@ -1,7 +1,7 @@
-
 import { useState } from "react";
 import axios from "axios";
 import "./Display.css";
+import { decryptToBlob } from "../crypto";
 
 const BACKEND_URL = "https://blockchain-image-storage.onrender.com";
 const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
@@ -16,7 +16,7 @@ const Display = ({ contract, account }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // ADDED: Audit-history search and loaded state
+  // Audit-history search and loaded state
   const [historySearch, setHistorySearch] = useState("");
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -68,6 +68,8 @@ const Display = ({ contract, account }) => {
               fileType,
               fileSize: details.fileSize ?? null,
               createdAt: details.createdAt || null,
+              encrypted: !!details.encrypted,
+              mime: details.fileType || "",
             };
           } catch (error) {
             // Keep files visible if MongoDB metadata is unavailable
@@ -77,6 +79,8 @@ const Display = ({ contract, account }) => {
               fileType: "unknown",
               fileSize: null,
               createdAt: null,
+              encrypted: false,
+              mime: "",
             };
           }
         })
@@ -93,7 +97,7 @@ const Display = ({ contract, account }) => {
     }
   };
 
-  // Existing file search and type filter
+  // File search and type filter
   const filteredFiles = files.filter((file) => {
     const matchesSearch = file.fileName
       .toLowerCase()
@@ -125,8 +129,37 @@ const Display = ({ contract, account }) => {
   const openFile = async (file) => {
     const fileUrl = `${IPFS_GATEWAY}${file.fileHash.substring(7)}`;
 
-    // Open the file immediately
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
+    if (file.encrypted) {
+      const owner = (address.trim() || account).toLowerCase();
+
+      if (owner !== account.toLowerCase()) {
+        setStatus("This file is encrypted. Only the owner can open it.");
+        return;
+      }
+
+      const win = window.open("about:blank", "_blank");
+
+      try {
+        setStatus("Decrypting file...");
+        const res = await axios.get(fileUrl, { responseType: "arraybuffer" });
+        const blob = await decryptToBlob(
+          res.data,
+          contract.signer,
+          account,
+          file.mime
+        );
+        win.location = URL.createObjectURL(blob);
+        setStatus("");
+      } catch (error) {
+        if (win) win.close();
+        console.error("Decrypt error:", error);
+        setStatus("Could not decrypt file.");
+        return;
+      }
+    } else {
+      // Open the file immediately
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+    }
 
     try {
       await axios.post(`${BACKEND_URL}/api/access-log`, {
@@ -164,7 +197,7 @@ const Display = ({ contract, account }) => {
     }
   };
 
-  // ADDED: Search audit records by filename, wallet, or IPFS hash
+  // Search audit records by filename, wallet, or IPFS hash
   const filteredHistory = accessHistory.filter((log) => {
     const query = historySearch.trim().toLowerCase();
 
@@ -239,6 +272,7 @@ const Display = ({ contract, account }) => {
             </h4>
 
             <p>Type: {file.fileType.toUpperCase()}</p>
+            {file.encrypted && <p>🔒 Encrypted (owner only)</p>}
             <p>
               Size:{" "}
               {file.fileSize != null
@@ -291,7 +325,7 @@ const Display = ({ contract, account }) => {
         </p>
       )}
 
-      {/* CHANGED: Improved audit-history section */}
+      {/* Audit-history section */}
       <div className="access-history">
         <h3>File Access History</h3>
         <p className="history-description">
@@ -315,7 +349,7 @@ const Display = ({ contract, account }) => {
           </span>
         </div>
 
-        {/* ADDED: Audit-log search */}
+        {/* Audit-log search */}
         <input
           type="text"
           className="address-input history-search"

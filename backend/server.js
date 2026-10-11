@@ -69,6 +69,7 @@ const allowedMimeTypes = [
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/octet-stream",
 ];
 
 // Upload limits: maximum 10 MB and one file
@@ -141,7 +142,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 // Save file metadata
 app.post("/api/files", async (req, res) => {
   try {
-    const { fileName, fileHash, owner, fileSize, fileType } = req.body;
+    const { fileName, fileHash, owner, fileSize, fileType, encrypted } = req.body;
 
     // Validate file metadata
     if (
@@ -164,12 +165,13 @@ app.post("/api/files", async (req, res) => {
     }
 
     const file = new File({
-      fileName: fileName.trim(),
-      fileHash,
-      owner,
-      fileSize,
-      fileType,
-    });
+  fileName: fileName.trim(),
+  fileHash,
+  owner,
+  fileSize,
+  fileType,
+  encrypted: encrypted === true,
+});
 
     await file.save();
 

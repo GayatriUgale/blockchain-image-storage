@@ -1,13 +1,15 @@
 import { useState } from "react";
 import axios from "axios";
 import "./FileUpload.css";
+import { encryptFile } from "../crypto";
 
 const FileUpload = ({ contract, account, provider }) => {
   const [file, setfile] = useState(null);
   const [filename, setFilename] = useState("No File Selected");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
-  const [isError, setIsError] = useState(false); // ADDED
+  const [isError, setIsError] = useState(false);
+  const [encrypt, setEncrypt] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,13 +18,23 @@ const FileUpload = ({ contract, account, provider }) => {
       return;
     }
 
+    const form = e.target;
+
     setIsUploading(true);
-    setIsError(false); // ADDED
+    setIsError(false);
     setUploadStatus("Uploading file to IPFS...");
 
     try {
+      let uploadFile = file;
+
+      if (encrypt) {
+        setUploadStatus("Encrypting file...");
+        uploadFile = await encryptFile(file, contract.signer, account);
+        setUploadStatus("Uploading file to IPFS...");
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", uploadFile, file.name);
 
       const resFile = await axios.post(
         "https://blockchain-image-storage.onrender.com/api/upload",
@@ -44,8 +56,9 @@ const FileUpload = ({ contract, account, provider }) => {
           fileName: file.name,
           fileHash: imgHash,
           owner: account,
-          fileSize: file.size, // ADDED
-          fileType: file.type, // ADDED
+          fileSize: file.size,
+          fileType: file.type,
+          encrypted: encrypt,
         },
       );
 
@@ -54,12 +67,12 @@ const FileUpload = ({ contract, account, provider }) => {
 
       setFilename("No File Selected");
       setfile(null);
-      e.target.reset();
+      setEncrypt(false);
+      form.reset();
     } catch (e) {
       console.error("Upload error:", e);
-      setIsError(true); // ADDED
+      setIsError(true);
 
-      // CHANGED: Show useful error messages
       if (e.response?.data?.error) {
         setUploadStatus(e.response.data.error);
       } else if (e.code === "ECONNABORTED") {
@@ -81,7 +94,7 @@ const FileUpload = ({ contract, account, provider }) => {
       setfile(data);
       setFilename(data.name);
       setUploadStatus("");
-      setIsError(false); // ADDED
+      setIsError(false);
     }
   };
 
@@ -100,6 +113,16 @@ const FileUpload = ({ contract, account, provider }) => {
         />
 
         <span className="text_area">File: {filename}</span>
+
+        <label style={{ fontSize: "14px" }}>
+          <input
+            type="checkbox"
+            checked={encrypt}
+            onChange={(e) => setEncrypt(e.target.checked)}
+            disabled={isUploading}
+          />{" "}
+          Encrypt (private, owner only)
+        </label>
 
         <button
           type="submit"
