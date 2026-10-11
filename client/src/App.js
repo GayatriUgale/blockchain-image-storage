@@ -14,9 +14,9 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
 
   const contractAddress =
-    "0xbEe55697922861dB64517647D66aEAd8d0a89E74";
+    "0xf98aCa34FCe97435D5895cB099BB44f7b0196c77";
 
-  // Load the wallet only when an account is already available.
+  
   const loadWallet = useCallback(async (address) => {
     if (!window.ethereum || !address) {
       setAccount("");
