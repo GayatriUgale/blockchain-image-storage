@@ -10,6 +10,7 @@
     "axios": "^1.17.0",
     "buffer": "^6.0.3",
     "ethers": "^5.7.2",
+    "form-data": "^4.0.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-scripts": "5.0.1",
@@ -22,14 +23,14 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-  "extends": [
-    "react-app",
-    "react-app/jest"
-  ],
-  "rules": {
-    "no-unused-vars": "warn"
-  }
-},
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "no-unused-vars": "warn"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",

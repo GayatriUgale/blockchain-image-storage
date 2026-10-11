@@ -1,158 +1,388 @@
 
-/* eslint-disable no-unused-vars */
-
 import { useState } from "react";
 import axios from "axios";
 import "./Display.css";
 
+const BACKEND_URL = "https://blockchain-image-storage.onrender.com";
+const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+
 const Display = ({ contract, account }) => {
-  const [data, setData] = useState([]);
+  const [files, setFiles] = useState([]);
   const [address, setAddress] = useState("");
   const [accessHistory, setAccessHistory] = useState([]);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ADDED: Audit-history search and loaded state
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const getdata = async () => {
-    let dataArray;
-    const Otheraddress = address;
-
-    try {
-      if (Otheraddress) {
-        dataArray = await contract.display(Otheraddress);
-      } else {
-        dataArray = await contract.display(account);
-      }
-    } catch (e) {
-      console.log("Error:", e);
-      alert("You don't have access");
+    if (!contract || !account) {
+      setStatus("Please connect your wallet first.");
       return;
     }
 
-    const isEmpty = !dataArray || Object.keys(dataArray).length === 0;
+    setIsLoading(true);
+    setStatus("");
 
-    if (!isEmpty) {
-      const str = dataArray.toString();
-      const str_array = str.split(",");
+    try {
+      const targetAddress = address.trim() || account;
+      const dataArray = await contract.display(targetAddress);
 
-      const images = str_array.map((item, i) => {
-        const openFile = async (e) => {
-          e.preventDefault();
+      const hashes = Array.from(dataArray || []).filter(
+        (item) => typeof item === "string" && item.startsWith("ipfs://")
+      );
 
-          const newTab = window.open("", "_blank");
+      if (hashes.length === 0) {
+        setFiles([]);
+        setStatus("No files found for this wallet.");
+        return;
+      }
 
-          let fileName = "Unknown File";
-
+      const fileDetails = await Promise.all(
+        hashes.map(async (hash) => {
           try {
-            const fileRes = await axios.get(
-              `http://https://blockchain-image-storage.onrender.com/api/files/${encodeURIComponent(item)}`
+            const response = await axios.get(
+              `${BACKEND_URL}/api/files/${encodeURIComponent(hash)}`
             );
 
-            fileName = fileRes.data.file.fileName;
+            const details = response.data.file || {};
+            const fileName = details.fileName || hash.substring(7);
+            const extension = fileName.includes(".")
+              ? fileName.split(".").pop().toLowerCase()
+              : "";
 
-            await axios.post("http://https://blockchain-image-storage.onrender.com/api/access-log", {
+            let fileType = details.fileType || extension || "unknown";
+
+            if (fileType.includes("/")) {
+              fileType = fileType.split("/").pop();
+            }
+
+            return {
+              fileHash: hash,
               fileName,
-              fileHash: item,
-              owner: Otheraddress || account,
-              accessedBy: account,
-            });
-
-            newTab.location.href = item;
+              fileType,
+              fileSize: details.fileSize ?? null,
+              createdAt: details.createdAt || null,
+            };
           } catch (error) {
-            console.error("File access error:", error);
-            newTab.location.href = item;
+            // Keep files visible if MongoDB metadata is unavailable
+            return {
+              fileHash: hash,
+              fileName: hash.substring(7),
+              fileType: "unknown",
+              fileSize: null,
+              createdAt: null,
+            };
           }
-        };
+        })
+      );
 
-        return (
-          <a
-            href={item}
-            key={i}
-            target="_blank"
-            rel="noreferrer"
-            onClick={openFile}
-          >
-            <img
-              src={`https://gateway.pinata.cloud/ipfs/${item.substring(7)}`}
-              alt="uploaded"
-              className="image-list"
-            />
-          </a>
-        );
+      setFiles(fileDetails);
+      setStatus(`${fileDetails.length} file(s) found.`);
+    } catch (error) {
+      console.error("File retrieval error:", error);
+      setFiles([]);
+      setStatus("Unable to retrieve files. Check access and wallet address.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Existing file search and type filter
+  const filteredFiles = files.filter((file) => {
+    const matchesSearch = file.fileName
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesType =
+      typeFilter === "all" ||
+      (typeFilter === "image" &&
+        ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(file.fileType)) ||
+      (typeFilter === "pdf" && file.fileType === "pdf") ||
+      (typeFilter === "document" &&
+        ["doc", "docx", "txt", "csv", "xls", "xlsx", "ppt", "pptx"].includes(
+          file.fileType
+        ));
+
+    return matchesSearch && matchesType;
+  });
+
+  const copyText = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(`${label} copied successfully.`);
+    } catch (error) {
+      console.error("Copy error:", error);
+      setStatus("Unable to copy. Please copy the value manually.");
+    }
+  };
+
+  const openFile = async (file) => {
+    const fileUrl = `${IPFS_GATEWAY}${file.fileHash.substring(7)}`;
+
+    // Open the file immediately
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+
+    try {
+      await axios.post(`${BACKEND_URL}/api/access-log`, {
+        fileName: file.fileName,
+        fileHash: file.fileHash,
+        owner: address.trim() || account,
+        accessedBy: account,
       });
-
-      setData(images);
-    } else {
-      alert("No image to display");
+    } catch (error) {
+      console.error("File access logging error:", error);
     }
   };
 
   const getAccessHistory = async () => {
+    if (!account) {
+      setStatus("Please connect your wallet first.");
+      return;
+    }
+
+    setHistoryLoading(true);
+
     try {
       const res = await axios.get(
-        `http://https://blockchain-image-storage.onrender.com/api/access-history/${account}`
+        `${BACKEND_URL}/api/access-history/${account}`
       );
 
-      setAccessHistory(res.data.logs);
+      setAccessHistory(res.data.logs || []);
+      setHistoryLoaded(true);
+      setStatus("Access history refreshed.");
     } catch (error) {
       console.error("Access history error:", error);
-      alert("Failed to fetch access history");
+      setStatus("Failed to fetch access history. Please try again.");
+    } finally {
+      setHistoryLoading(false);
     }
   };
+
+  // ADDED: Search audit records by filename, wallet, or IPFS hash
+  const filteredHistory = accessHistory.filter((log) => {
+    const query = historySearch.trim().toLowerCase();
+
+    return (
+      (log.fileName || "").toLowerCase().includes(query) ||
+      (log.accessedBy || "").toLowerCase().includes(query) ||
+      (log.fileHash || "").toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="display">
       <input
         type="text"
-        placeholder="Enter address to view their images"
+        placeholder="Enter wallet address to view files"
         className="address-input"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
       />
 
-      <button className="get-btn" onClick={getdata}>
-        Get Images
+      <button
+        className="get-btn"
+        onClick={getdata}
+        disabled={isLoading || !account || !contract}
+      >
+        {isLoading ? "Loading Files..." : "Get Files"}
       </button>
 
-      <button className="get-btn" onClick={getAccessHistory}>
-        View Access History
-      </button>
-
-      <div className="access-history">
-        <h3>File Access History</h3>
-
-        <p>
-          <strong>Total Accesses:</strong> {accessHistory.length}
+      {status && (
+        <p className="display-status" role="status" aria-live="polite">
+          {status}
         </p>
+      )}
 
-        {accessHistory.length === 0 ? (
-          <p>No access history found.</p>
-        ) : (
-          accessHistory.map((log, index) => (
-            <div className="history-item" key={index}>
-              <p>
-                <strong>File:</strong>{" "}
-                {log.fileName || "Unknown File"}
-              </p>
+      <div className="file-filters">
+        <input
+          type="text"
+          className="address-input"
+          placeholder="Search by filename..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
-              <p>
-                <strong>IPFS Hash:</strong> {log.fileHash}
-              </p>
-
-              <p>
-                <strong>Accessed By:</strong> {log.accessedBy}
-              </p>
-
-              <p>
-                <strong>Time:</strong>{" "}
-                {new Date(log.accessedAt).toLocaleString()}
-              </p>
-            </div>
-          ))
-        )}
+        <select
+          className="address-input"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Filter files by type"
+        >
+          <option value="all">All file types</option>
+          <option value="image">Images</option>
+          <option value="pdf">PDF files</option>
+          <option value="document">Documents and spreadsheets</option>
+        </select>
       </div>
 
-      <div className="image-grid">{data}</div>
+      <div className="file-grid">
+        {filteredFiles.map((file) => (
+          <div className="file-card" key={file.fileHash}>
+            <div className="file-icon">
+              {file.fileType === "pdf"
+                ? "PDF"
+                : ["jpg", "jpeg", "png", "gif", "webp"].includes(
+                    file.fileType
+                  )
+                ? "IMG"
+                : "FILE"}
+            </div>
+
+            <h4 className="file-name" title={file.fileName}>
+              {file.fileName}
+            </h4>
+
+            <p>Type: {file.fileType.toUpperCase()}</p>
+            <p>
+              Size:{" "}
+              {file.fileSize != null
+                ? `${(file.fileSize / 1024).toFixed(1)} KB`
+                : "—"}
+            </p>
+            <p>
+              Uploaded:{" "}
+              {file.createdAt
+                ? new Date(file.createdAt).toLocaleDateString()
+                : "—"}
+            </p>
+
+            <button
+              className="file-action-btn"
+              onClick={() => openFile(file)}
+            >
+              Open File
+            </button>
+
+            <button
+              className="file-action-btn secondary"
+              onClick={() => copyText(file.fileHash, "CID")}
+            >
+              Copy CID
+            </button>
+
+            <button
+              className="file-action-btn secondary"
+              onClick={() =>
+                copyText(
+                  `${IPFS_GATEWAY}${file.fileHash.substring(7)}`,
+                  "File link"
+                )
+              }
+            >
+              Copy Link
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {files.length > 0 && filteredFiles.length === 0 && (
+        <p className="empty-state">No files match your search or filter.</p>
+      )}
+
+      {files.length === 0 && !isLoading && (
+        <p className="empty-state">
+          Retrieve files using a wallet address to see them here.
+        </p>
+      )}
+
+      {/* CHANGED: Improved audit-history section */}
+      <div className="access-history">
+        <h3>File Access History</h3>
+        <p className="history-description">
+          Review file access recorded by the application.
+        </p>
+
+        <button
+          className="get-btn"
+          onClick={getAccessHistory}
+          disabled={historyLoading || !account}
+        >
+          {historyLoading ? "Refreshing History..." : "Refresh History"}
+        </button>
+
+        <div className="history-summary">
+          <span>
+            Total records: <strong>{accessHistory.length}</strong>
+          </span>
+          <span>
+            Matching records: <strong>{filteredHistory.length}</strong>
+          </span>
+        </div>
+
+        {/* ADDED: Audit-log search */}
+        <input
+          type="text"
+          className="address-input history-search"
+          placeholder="Search filename, wallet address, or IPFS hash..."
+          value={historySearch}
+          onChange={(e) => setHistorySearch(e.target.value)}
+        />
+
+        {historyLoading ? (
+          <p className="empty-state">Loading access history...</p>
+        ) : !historyLoaded ? (
+          <p className="empty-state">
+            Click Refresh History to load the audit records.
+          </p>
+        ) : filteredHistory.length === 0 ? (
+          <p className="empty-state">
+            {accessHistory.length === 0
+              ? "No access records found for this wallet."
+              : "No records match your search."}
+          </p>
+        ) : (
+          <div className="history-table-wrapper">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Accessed By</th>
+                  <th>Access Time</th>
+                  <th>IPFS CID</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredHistory.map((log, index) => (
+                  <tr key={`${log._id || log.fileHash}-${index}`}>
+                    <td className="history-filename">
+                      {log.fileName || "Unknown File"}
+                    </td>
+
+                    <td className="wallet-cell">
+                      {log.accessedBy || "Unknown"}
+                    </td>
+
+                    <td>
+                      {log.accessedAt
+                        ? new Date(log.accessedAt).toLocaleString()
+                        : "Unknown"}
+                    </td>
+
+                    <td>
+                      <button
+                        className="file-action-btn secondary"
+                        onClick={() => copyText(log.fileHash, "CID")}
+                        disabled={!log.fileHash}
+                      >
+                        Copy CID
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default Display;
-

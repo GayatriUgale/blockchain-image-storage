@@ -1,29 +1,40 @@
-body {
- background-color: #1e1e1e;
-}
-.main_heading{
 
-  background-color: #2a2a2a;
-  border-radius: 4rem;
+body {
+  /* CHANGED: Light blue and white background */
+  background: linear-gradient(135deg, #EFF8FF, #FFFFFF, #E5F2FF);
+  color: #23466B;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.main_heading {
+  /* CHANGED: White frosted-glass heading panel */
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 2rem;
   justify-content: center;
   align-items: center;
   display: flex;
   height: 10rem;
-  border: 2px dotted white; 
+  border: 1px solid rgba(185, 220, 250, 0.8);
   box-sizing: border-box;
-
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(52, 120, 200, 0.08);
 }
-.text_account{
 
-  background-color: #2a2a2a;
+.text_account {
+  /* CHANGED: Translucent white account panel */
+  background: rgba(255, 255, 255, 0.75);
   height: 4rem;
   width: 100%;
-  border-radius: 4px;
+  border-radius: 12px;
   justify-content: center;
+  align-items: center;
   display: flex;
-  border: 1px solid white; 
+  border: 1px solid rgba(185, 220, 250, 0.8);
   box-sizing: border-box;
-  
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #23466B;
+  box-shadow: 0 4px 16px rgba(52, 120, 200, 0.06);
 }
-
-

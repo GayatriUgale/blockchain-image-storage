@@ -5,76 +5,126 @@ import "./FileUpload.css";
 const FileUpload = ({ contract, account, provider }) => {
   const [file, setfile] = useState(null);
   const [filename, setFilename] = useState("No File Selected");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [isError, setIsError] = useState(false); // ADDED
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (file) {
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
+    if (!file || !account || !contract || isUploading) {
+      return;
+    }
 
-        const resFile = await axios({
-          method: "post",
+    setIsUploading(true);
+    setIsError(false); // ADDED
+    setUploadStatus("Uploading file to IPFS...");
 
-          // CHANGED: send file to our backend instead of Pinata directly
-          url: "http://https://blockchain-image-storage.onrender.com/api/upload",
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-          data: formData,
+      const resFile = await axios.post(
+        "https://blockchain-image-storage.onrender.com/api/upload",
+        formData,
+      );
 
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
+      const imgHash = `ipfs://${resFile.data.IpfsHash}`;
 
-        const imgHash = `ipfs://${resFile.data.IpfsHash}`;
-        await contract.add(account, imgHash);
-        await axios.post("http://https://blockchain-image-storage.onrender.com/api/files", {
+      setUploadStatus("Saving file on blockchain...");
+
+      const tx = await contract.add(account, imgHash);
+      await tx.wait();
+
+      setUploadStatus("Saving file details...");
+
+      await axios.post(
+        "https://blockchain-image-storage.onrender.com/api/files",
+        {
           fileName: file.name,
           fileHash: imgHash,
           owner: account,
-        });
-        alert("Sucessfully image Uploaded");
+          fileSize: file.size, // ADDED
+          fileType: file.type, // ADDED
+        },
+      );
 
-        setFilename("No image Selected");
-        setfile(null);
-      } catch (e) {
-        alert("Unable to upload image");
+      setIsError(false);
+      setUploadStatus("File uploaded successfully!");
 
-        console.error("Upload error:", e);
+      setFilename("No File Selected");
+      setfile(null);
+      e.target.reset();
+    } catch (e) {
+      console.error("Upload error:", e);
+      setIsError(true); // ADDED
+
+      // CHANGED: Show useful error messages
+      if (e.response?.data?.error) {
+        setUploadStatus(e.response.data.error);
+      } else if (e.code === "ECONNABORTED") {
+        setUploadStatus("Request timed out. Please try again.");
+      } else {
+        setUploadStatus(
+          "Upload failed. Check your wallet connection and try again.",
+        );
       }
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const RetrieveFile = (e) => {
     const data = e.target.files[0];
-    setfile(data);
-    setFilename(data.name);
-    e.preventDefault();
+
+    if (data) {
+      setfile(data);
+      setFilename(data.name);
+      setUploadStatus("");
+      setIsError(false); // ADDED
+    }
   };
 
   return (
     <div className="top">
       <form className="form" onSubmit={handleSubmit}>
-        <label htmlFor="file-Upload" style={{ color: "white" }}>
-          choose Image
-        </label>
+        <label htmlFor="file-Upload">Choose File</label>
 
         <input
-          disabled={!account}
+          disabled={!account || isUploading}
           type="file"
           id="file-Upload"
           name="data"
+          accept="image/*,.pdf,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
           onChange={RetrieveFile}
         />
 
-        <span className="text_area" style={{ color: "white" }}>
-          Image:{filename}
-        </span>
+        <span className="text_area">File: {filename}</span>
 
-        <button type="submit" className="upload" disabled={!file}>
-          Upload File
+        <button
+          type="submit"
+          className="upload"
+          disabled={!file || !account || !contract || isUploading}
+        >
+          {isUploading ? "Uploading..." : "Upload File"}
         </button>
+
+        {isUploading && (
+          <div className="upload-progress" role="status" aria-live="polite">
+            <span className="loader"></span>
+            <p>{uploadStatus}</p>
+          </div>
+        )}
+
+        {!isUploading && uploadStatus && (
+          <p
+            className={isError ? "upload-error" : "upload-success"}
+            role="status"
+            aria-live="polite"
+          >
+            {uploadStatus}
+          </p>
+        )}
       </form>
     </div>
   );
