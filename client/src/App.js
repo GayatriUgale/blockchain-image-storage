@@ -14,7 +14,7 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
 
   const contractAddress =
-    "0xf98aCa34FCe97435D5895cB099BB44f7b0196c77";
+    "0xA79B8B1E3dd59c2CBf4D15f4812316097080Cc6C";
 
   
   const loadWallet = useCallback(async (address) => {

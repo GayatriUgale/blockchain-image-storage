@@ -14,8 +14,14 @@ contract Upload {
     mapping(address => mapping(address => bool)) previousData;
     mapping(address => mapping(address => uint256)) accessExpiry;
 
+    event FileAdded(address indexed owner, string url);
+    event AccessGranted(address indexed owner, address indexed user, uint256 expiry);
+    event AccessRevoked(address indexed owner, address indexed user);
+
     function add(address _user, string memory url) external {
+        require(_user == msg.sender, "Only owner can add");
         value[_user].push(url);
+        emit FileAdded(_user, url);
     }
 
     function allow(address user, uint256 duration) external {
@@ -38,6 +44,8 @@ contract Upload {
             );
             previousData[msg.sender][user] = true;
         }
+
+        emit AccessGranted(msg.sender, user, accessExpiry[msg.sender][user]);
     }
 
     function revoke(address user) public {
@@ -47,9 +55,10 @@ contract Upload {
         for (uint i = 0; i < AccessList[msg.sender].length; i++) {
             if (AccessList[msg.sender][i].user == user) {
                 AccessList[msg.sender][i].access = false;
-                // Keep the recorded expiry for the access history.
             }
         }
+
+        emit AccessRevoked(msg.sender, user);
     }
 
     function display(address _user)

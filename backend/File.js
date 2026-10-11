@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const fileSchema = new mongoose.Schema({
@@ -13,6 +14,19 @@ const fileSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+
+  // ADDED: Store file size in bytes
+  fileSize: {
+    type: Number,
+    default: null,
+  },
+
+  // ADDED: Store file MIME type
+  fileType: {
+    type: String,
+    default: "",
+  },
+
   createdAt: {
     type: Date,
     default: Date.now,

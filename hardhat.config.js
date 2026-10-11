@@ -7,16 +7,10 @@ module.exports = {
     hardhat: {
       chainId: 1337,
     },
-    ganache: {
-      url: "http://127.0.0.1:8545",
-      accounts: {
-        mnemonic: "skin sample bulb nest achieve unfold escape firm quantum connect just jungle"
-      }
-    },
     sepolia: {
-      url: process.env.ALCHEMY_RPC_URL,
-      accounts: [process.env.PRIVATE_KEY]
-    }
+      url: process.env.ALCHEMY_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   paths: {
     artifacts: "./client/src/artifacts",
