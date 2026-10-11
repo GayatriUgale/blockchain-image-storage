@@ -146,7 +146,7 @@ function App() {
   return (
     <div className="App">
       <h1 className="main_heading" style={{ color: "#23466B" }}>
-        Decentralized file storage System
+        Blockchain-Based File Storage System
       </h1>
 
       <div className="text_account">
